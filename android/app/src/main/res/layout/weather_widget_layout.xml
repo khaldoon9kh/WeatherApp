@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native fallback layout used by WeatherWidgetProvider.buildNativeRemoteViews().
+  Displayed instantly from SharedPreferences before the JS HeadlessTask renders
+  the full react-native-android-widget version.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="start|top"
+    android:padding="16dp"
+    android:background="@drawable/widget_bg_dark">
+
+    <!-- City name -->
+    <TextView
+        android:id="@+id/tv_city"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#94A3B8"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="Weather" />
+
+    <!-- Current temperature -->
+    <TextView
+        android:id="@+id/tv_temperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="42sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp"
+        android:includeFontPadding="false"
+        android:text="--°C" />
+
+    <!-- Weather condition (shown in temp_condition / temp_condition_aqi modes) -->
+    <TextView
+        android:id="@+id/tv_condition"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#94A3B8"
+        android:textSize="13sp"
+        android:layout_marginTop="2dp"
+        android:text="" />
+
+    <!-- AQI pill (shown in temp_condition_aqi mode) -->
+    <LinearLayout
+        android:id="@+id/ll_aqi"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:background="@drawable/widget_aqi_badge"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_aqi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#22C55E"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:text="AQI --" />
+    </LinearLayout>
+
+    <!-- Top pollen risk (shown in temp_condition_aqi mode) -->
+    <TextView
+        android:id="@+id/tv_pollen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#94A3B8"
+        android:textSize="11sp"
+        android:layout_marginTop="4dp"
+        android:text="" />
+
+</LinearLayout>

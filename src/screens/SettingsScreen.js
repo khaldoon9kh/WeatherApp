@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {loadPrefs, savePrefs} from '../storage/prefsStorage';
+import {writeSettings} from '../services/sharedPrefsService';
 
 export default function SettingsScreen() {
   const [prefs, setPrefs] = useState(null);
@@ -24,6 +25,17 @@ export default function SettingsScreen() {
     setPrefs(updated);
     setSaving(true);
     await savePrefs(updated);
+
+    // Keep SharedPreferences in sync for the widget when any display preference
+    // changes — triggers a widget update broadcast automatically.
+    if (key === 'tempUnit' || key === 'widgetDisplay' || key === 'widgetTheme') {
+      writeSettings({
+        tempUnit:      updated.tempUnit,
+        widgetDisplay: updated.widgetDisplay,
+        widgetTheme:   updated.widgetTheme,
+      }).catch(() => {});
+    }
+
     setSaving(false);
   }, [prefs]);
 

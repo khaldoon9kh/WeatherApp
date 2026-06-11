@@ -10,6 +10,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost;
 import com.facebook.soloader.SoLoader;
 import com.reactnativeandroidwidget.RNAndroidWidgetPackage;
 import java.util.List;
+import com.weatherapp.SharedPrefsPackage;
 
 public class MainApplication extends Application implements ReactApplication {
 
@@ -25,6 +26,7 @@ public class MainApplication extends Application implements ReactApplication {
           List<ReactPackage> packages = new PackageList(this).getPackages();
           // react-native-android-widget requires manual registration with click action
           packages.add(new RNAndroidWidgetPackage(BuildConfig.APPLICATION_ID + ".action.WIDGET_CLICK"));
+          packages.add(new SharedPrefsPackage());
           return packages;
         }
 

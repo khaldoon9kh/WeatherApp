@@ -20,6 +20,7 @@ import {fetchAirQuality, buildAllergySummary, getPollenInfo} from '../services/a
 import {getLocationWithPermission} from '../services/locationService';
 import {loadPrefs} from '../storage/prefsStorage';
 import {loadCities} from '../storage/citiesStorage';
+import {writeWeatherData} from '../services/sharedPrefsService';
 
 export default function HomeScreen() {
   const [prefs, setPrefs] = useState(null);
@@ -62,6 +63,32 @@ export default function HomeScreen() {
       ]);
       setWeather(w);
       setAirQuality(aq);
+
+      // Persist a snapshot to SharedPreferences so the home screen widget can
+      // render immediately from cached data (also triggers widget update broadcast).
+      writeWeatherData({
+        cityName:     city.name,
+        latitude:     city.latitude,
+        longitude:    city.longitude,
+        temperature:  w.current.temperature,
+        feelsLike:    w.current.feelsLike,
+        humidity:     w.current.humidity,
+        windSpeed:    w.current.windSpeed,
+        uvIndex:      w.current.uvIndex,
+        visibility:   w.current.visibility,
+        weatherCode:  w.current.weatherCode,
+        weatherLabel: getWeatherInfo(w.current.weatherCode).label,
+        aqi:          aq.aqi,
+        pm25:         aq.pm25,
+        pm10:         aq.pm10,
+        grassPollen:  aq.grassPollen,
+        treePollen:   aq.treePollen,
+        weedPollen:   aq.weedPollen,
+        tempUnit:     userPrefs.tempUnit,
+        widgetDisplay: userPrefs.widgetDisplay,
+        widgetTheme:  userPrefs.widgetTheme,
+      }).catch(() => {}); // fire-and-forget, never block the UI
+
     } catch (e) {
       setError(e.message || 'Failed to load weather data.');
     } finally {

@@ -4,7 +4,7 @@ import BackgroundFetch from 'react-native-background-fetch';
 import AppNavigator from './navigation/AppNavigator';
 import {loadPrefs} from './storage/prefsStorage';
 import {loadCities} from './storage/citiesStorage';
-import {fetchWeather, getWeatherInfo} from './services/weatherService';
+import {fetchWeather, getWeatherInfo, weatherEmoji} from './services/weatherService';
 import {fetchAirQuality, getPollenInfo} from './services/airQualityService';
 import {writeWeatherData} from './services/sharedPrefsService';
 
@@ -37,6 +37,13 @@ async function backgroundTask(taskId) {
     // Writing to SharedPreferences also broadcasts ACTION_APPWIDGET_UPDATE,
     // causing WeatherWidgetProvider.onUpdate() → JS HeadlessTask to re-render
     // the widget from the freshly written data.
+    const hourlyPayload = {};
+    (weather.hourly || []).slice(0, 6).forEach((h, i) => {
+      const isDaytime = h.hour >= 6 && h.hour < 20;
+      hourlyPayload[`hour${i}Label`] = h.label;
+      hourlyPayload[`hour${i}Icon`]  = weatherEmoji(h.weatherCode, isDaytime);
+      hourlyPayload[`hour${i}Temp`]  = h.temp;
+    });
     await writeWeatherData({
       cityName:     city.name,
       latitude:     city.latitude,
@@ -49,6 +56,8 @@ async function backgroundTask(taskId) {
       visibility:   weather.current.visibility,
       weatherCode:  weather.current.weatherCode,
       weatherLabel: getWeatherInfo(weather.current.weatherCode).label,
+      dailyHigh:    weather.daily[0]?.tempMax ?? 0,
+      dailyLow:     weather.daily[0]?.tempMin ?? 0,
       aqi:          aq.aqi,
       pm25:         aq.pm25,
       pm10:         aq.pm10,
@@ -58,6 +67,7 @@ async function backgroundTask(taskId) {
       tempUnit:     prefs.tempUnit,
       widgetDisplay: prefs.widgetDisplay,
       widgetTheme:  prefs.widgetTheme,
+      ...hourlyPayload,
     });
 
     // Pollen alert notification

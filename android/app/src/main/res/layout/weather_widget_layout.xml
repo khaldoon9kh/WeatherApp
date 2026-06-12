@@ -1,84 +1,254 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Native fallback layout used by WeatherWidgetProvider.buildNativeRemoteViews().
-  Displayed instantly from SharedPreferences before the JS HeadlessTask renders
-  the full react-native-android-widget version.
+  Native fallback layout: painted synchronously from SharedPreferences while
+  the JS HeadlessTask boots. Matches the new 4×2 premium gradient design.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="start|top"
-    android:padding="16dp"
-    android:background="@drawable/widget_bg_dark">
+    android:background="@drawable/widget_bg_gradient"
+    android:padding="14dp">
 
-    <!-- City name -->
-    <TextView
-        android:id="@+id/tv_city"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#94A3B8"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:text="Weather" />
-
-    <!-- Current temperature -->
-    <TextView
-        android:id="@+id/tv_temperature"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        android:textSize="42sp"
-        android:textStyle="bold"
-        android:layout_marginTop="4dp"
-        android:includeFontPadding="false"
-        android:text="--°C" />
-
-    <!-- Weather condition (shown in temp_condition / temp_condition_aqi modes) -->
-    <TextView
-        android:id="@+id/tv_condition"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#94A3B8"
-        android:textSize="13sp"
-        android:layout_marginTop="2dp"
-        android:text="" />
-
-    <!-- AQI pill (shown in temp_condition_aqi mode) -->
+    <!-- ── Top section: left clock half | divider | right weather half ── -->
     <LinearLayout
-        android:id="@+id/ll_aqi"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="3dp"
-        android:paddingBottom="3dp"
-        android:background="@drawable/widget_aqi_badge"
-        android:visibility="gone">
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
 
-        <TextView
-            android:id="@+id/tv_aqi"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#22C55E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:text="AQI --" />
+        <!-- Left half: large time + day/date -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:paddingEnd="10dp">
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="14:37"
+                android:textColor="#FFFFFF"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/tv_day_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tuesday, June 18"
+                android:textColor="#A8C4DC"
+                android:textSize="10sp"
+                android:maxLines="1"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <!-- Thin vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#40FFFFFF" />
+
+        <!-- Right half: weather icon + temp + condition + H/L -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:paddingStart="10dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tv_weather_icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⛅"
+                    android:textSize="30sp"
+                    android:paddingEnd="6dp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_temperature"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="22°C"
+                        android:textColor="#FFFFFF"
+                        android:textSize="26sp"
+                        android:textStyle="bold"
+                        android:includeFontPadding="false"
+                        android:maxLines="1" />
+
+                    <TextView
+                        android:id="@+id/tv_condition"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sunny"
+                        android:textColor="#A8C4DC"
+                        android:textSize="10sp"
+                        android:maxLines="1" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_hi_lo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="H: 25°  L: 18°"
+                android:textColor="#7AAEC8"
+                android:textSize="9sp"
+                android:layout_marginTop="3dp"
+                android:maxLines="1" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
-    <!-- Top pollen risk (shown in temp_condition_aqi mode) -->
-    <TextView
-        android:id="@+id/tv_pollen"
-        android:layout_width="wrap_content"
+    <!-- ── Bottom section: hourly forecast glassmorphism strip ── -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#94A3B8"
-        android:textSize="11sp"
-        android:layout_marginTop="4dp"
-        android:text="" />
+        android:orientation="horizontal"
+        android:background="@drawable/widget_hourly_bg"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp">
+
+        <!-- Hour 0 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour0_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="Now" />
+            <TextView android:id="@+id/tv_hour0_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="☀️" />
+            <TextView android:id="@+id/tv_hour0_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="22°" />
+        </LinearLayout>
+
+        <!-- Hour 1 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour1_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="3 PM" />
+            <TextView android:id="@+id/tv_hour1_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="⛅" />
+            <TextView android:id="@+id/tv_hour1_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="23°" />
+        </LinearLayout>
+
+        <!-- Hour 2 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour2_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="4 PM" />
+            <TextView android:id="@+id/tv_hour2_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="⛅" />
+            <TextView android:id="@+id/tv_hour2_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="21°" />
+        </LinearLayout>
+
+        <!-- Hour 3 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour3_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="5 PM" />
+            <TextView android:id="@+id/tv_hour3_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="☁️" />
+            <TextView android:id="@+id/tv_hour3_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="19°" />
+        </LinearLayout>
+
+        <!-- Hour 4 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour4_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="6 PM" />
+            <TextView android:id="@+id/tv_hour4_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="🌙" />
+            <TextView android:id="@+id/tv_hour4_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="18°" />
+        </LinearLayout>
+
+        <!-- Hour 5 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView android:id="@+id/tv_hour5_label"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#A8C4DC" android:textSize="8sp" android:maxLines="1" android:text="7 PM" />
+            <TextView android:id="@+id/tv_hour5_icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="15sp" android:layout_marginTop="2dp" android:layout_marginBottom="2dp"
+                android:text="🌙" />
+            <TextView android:id="@+id/tv_hour5_temp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#FFFFFF" android:textSize="9sp" android:textStyle="bold" android:text="17°" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -2,88 +2,88 @@ import React from 'react';
 import {FlexWidget, TextWidget} from 'react-native-android-widget';
 import {readWeatherData} from '../services/sharedPrefsService';
 import {loadPrefs} from '../storage/prefsStorage';
-import {getWeatherInfo, convertTemp} from '../services/weatherService';
-import {getAQIInfo, getPollenInfo} from '../services/airQualityService';
+import {getWeatherInfo, convertTemp, weatherEmoji} from '../services/weatherService';
 
 // ---------------------------------------------------------------------------
-// Theme palette (mirrors HomeScreen dark theme)
+// Widget UI — premium 4×2 gradient design
 // ---------------------------------------------------------------------------
-const THEMES = {
-  dark:        {bg: '#0F172A', text: '#FFFFFF', sub: '#94A3B8'},
-  light:       {bg: '#F1F5F9', text: '#0F172A', sub: '#64748B'},
-  transparent: {bg: 'transparent', text: '#FFFFFF', sub: '#CBD5E1'},
-};
 
-// ---------------------------------------------------------------------------
-// Widget UI component
-// ---------------------------------------------------------------------------
-function WeatherWidgetView({city, temp, unit, condition, aqi, topPollen, theme, display}) {
-  const colors = THEMES[theme] || THEMES.dark;
-  const aqiInfo = aqi != null && aqi > 0 ? getAQIInfo(aqi) : null;
-  const showCondition = display === 'temp_condition' || display === 'temp_condition_aqi';
-  const showAqi = display === 'temp_condition_aqi';
+function HourColumn({label, icon, temp}) {
+  return (
+    <FlexWidget style={{flex: 1, flexDirection: 'column', alignItems: 'center'}}>
+      <TextWidget text={label} style={{color: '#A8C4DC', fontSize: 8}} />
+      <TextWidget text={icon}  style={{fontSize: 14}} />
+      <TextWidget text={`${Math.round(temp)}°`} style={{color: '#FFFFFF', fontSize: 9, fontWeight: 'bold'}} />
+    </FlexWidget>
+  );
+}
 
+function WeatherWidgetView({time, dayDate, temp, unit, condition, weatherIcon, hiLo, hourly}) {
   return (
     <FlexWidget
       style={{
         height: 'match_parent',
-        width: 'match_parent',
+        width:  'match_parent',
         flexDirection: 'column',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        backgroundColor: colors.bg,
-        borderRadius: 20,
-        padding: 16,
+        backgroundColor: '#1B3354',
+        borderRadius: 28,
+        padding: 14,
       }}
       clickAction="OPEN_APP">
 
-      {/* City */}
-      <TextWidget
-        text={city || 'Weather'}
-        style={{color: colors.sub, fontSize: 13, fontWeight: '600'}}
-      />
+      {/* Top section: left clock | right weather */}
+      <FlexWidget style={{flex: 1, flexDirection: 'row', alignItems: 'center'}}>
 
-      {/* Temperature */}
-      <FlexWidget style={{flexDirection: 'row', alignItems: 'flex-end'}}>
-        <TextWidget
-          text={`${temp}°${unit}`}
-          style={{color: colors.text, fontSize: 42, fontWeight: 'bold'}}
-        />
-      </FlexWidget>
-
-      {/* Condition */}
-      {showCondition && condition ? (
-        <TextWidget
-          text={condition}
-          style={{color: colors.sub, fontSize: 13}}
-        />
-      ) : null}
-
-      {/* AQI pill */}
-      {showAqi && aqiInfo ? (
+        {/* Left: large time + day/date */}
         <FlexWidget
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: aqiInfo.bg,
-            borderRadius: 10,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-          }}>
+          style={{flex: 1, flexDirection: 'column', justifyContent: 'center', paddingRight: 10}}>
           <TextWidget
-            text={`AQI ${Math.round(aqi)}  ${aqiInfo.label}`}
-            style={{color: aqiInfo.color, fontSize: 11, fontWeight: 'bold'}}
+            text={time}
+            style={{color: '#FFFFFF', fontSize: 34, fontWeight: 'bold'}}
+          />
+          <TextWidget
+            text={dayDate}
+            style={{color: '#A8C4DC', fontSize: 10}}
           />
         </FlexWidget>
-      ) : null}
 
-      {/* Top pollen */}
-      {showAqi && topPollen ? (
-        <TextWidget
-          text={topPollen}
-          style={{color: colors.sub, fontSize: 11}}
-        />
-      ) : null}
+        {/* Right: emoji icon + temp/condition + H/L */}
+        <FlexWidget
+          style={{flex: 1, flexDirection: 'column', justifyContent: 'center', paddingLeft: 10}}>
+          <FlexWidget style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TextWidget text={weatherIcon} style={{fontSize: 28, paddingRight: 6}} />
+            <FlexWidget style={{flexDirection: 'column'}}>
+              <TextWidget
+                text={`${temp}°${unit}`}
+                style={{color: '#FFFFFF', fontSize: 26, fontWeight: 'bold'}}
+              />
+              <TextWidget
+                text={condition}
+                style={{color: '#A8C4DC', fontSize: 10}}
+              />
+            </FlexWidget>
+          </FlexWidget>
+          <TextWidget
+            text={hiLo}
+            style={{color: '#7AAEC8', fontSize: 9}}
+          />
+        </FlexWidget>
+
+      </FlexWidget>
+
+      {/* Bottom: glassmorphism hourly strip */}
+      <FlexWidget
+        style={{
+          flexDirection: 'row',
+          backgroundColor: '#2A4A6A',
+          borderRadius: 14,
+          paddingHorizontal: 4,
+          paddingVertical: 7,
+        }}>
+        {(hourly || []).slice(0, 6).map((h, i) => (
+          <HourColumn key={String(i)} label={h.label} icon={h.icon} temp={h.temp} />
+        ))}
+      </FlexWidget>
 
     </FlexWidget>
   );
@@ -93,53 +93,57 @@ function WeatherWidgetView({city, temp, unit, condition, aqi, topPollen, theme, 
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Convert a SharedPreferences snapshot (from readWeatherData) into the props
- * that WeatherWidgetView expects.
- */
-function snapshotToViewProps(d) {
-  const unit = d.tempUnit || 'C';
-  const temp = String(convertTemp(d.temperature || 0, unit));
-  const info = getWeatherInfo(d.weatherCode || 0);
-
-  // Pick the single highest pollen type
-  let topPollen = null;
-  const pollens = [
-    {label: 'Grass', val: d.grassPollen || 0},
-    {label: 'Tree',  val: d.treePollen  || 0},
-    {label: 'Weed',  val: d.weedPollen  || 0},
-  ];
-  const highest = pollens.reduce((a, b) => (a.val > b.val ? a : b));
-  if (highest.val > 10) {
-    const pi = getPollenInfo(highest.val);
-    topPollen = `${highest.label} pollen: ${pi.label}`;
-  }
-
+function buildCurrentTime() {
+  const now  = new Date();
+  const h    = String(now.getHours()).padStart(2, '0');
+  const m    = String(now.getMinutes()).padStart(2, '0');
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
   return {
-    city:      d.cityName     || '',
-    temp,
-    unit,
-    condition: d.weatherLabel || info.label,
-    aqi:       d.aqi   > 0   ? d.aqi   : null,
-    topPollen,
-    theme:     d.widgetTheme  || 'dark',
-    display:   d.widgetDisplay || 'temp_condition_aqi',
+    time:    `${h}:${m}`,
+    dayDate: `${DAYS[now.getDay()]}, ${MONS[now.getMonth()]} ${now.getDate()}`,
+    hour:    now.getHours(),
   };
 }
 
-const STALE_THRESHOLD_MS = 3 * 60 * 60 * 1000; // 3 hours
+function snapshotToViewProps(d) {
+  const unit = d.tempUnit || 'C';
+  const temp = convertTemp(d.temperature || 0, unit);
+  const hi   = convertTemp(d.dailyHigh   || 0, unit);
+  const lo   = convertTemp(d.dailyLow    || 0, unit);
+  const info = getWeatherInfo(d.weatherCode || 0);
+  const {time, dayDate, hour} = buildCurrentTime();
+
+  const hourly = (Array.isArray(d.hourly) ? d.hourly : []).map(h => ({
+    label: h.label || '--',
+    icon:  h.icon  || '⛅',
+    temp:  convertTemp(h.temp || 0, unit),
+  }));
+
+  return {
+    time,
+    dayDate,
+    temp,
+    unit,
+    condition:   d.weatherLabel || info.label,
+    weatherIcon: weatherEmoji(d.weatherCode || 0, hour >= 6 && hour < 20),
+    hiLo:        `H: ${hi}°  L: ${lo}°`,
+    hourly,
+  };
+}
+
+const STALE_THRESHOLD_MS = 3 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
-// Widget task handler — registered in index.js as the HeadlessTask handler.
-// This function is the ONLY place widget data originates from; it reads
-// SharedPreferences written by the app and never makes network calls.
+// Widget task handler — reads SharedPreferences, never makes network calls
 // ---------------------------------------------------------------------------
 export async function widgetTaskHandler(props) {
   const {widgetAction, renderWidget} = props;
 
   if (
-    widgetAction !== 'WIDGET_ADDED' &&
-    widgetAction !== 'WIDGET_UPDATE' &&
+    widgetAction !== 'WIDGET_ADDED'   &&
+    widgetAction !== 'WIDGET_UPDATE'  &&
     widgetAction !== 'WIDGET_RESIZED'
   ) {
     return;
@@ -150,45 +154,37 @@ export async function widgetTaskHandler(props) {
     const hasData  = snapshot && snapshot.cityName && snapshot.cityName.length > 0;
     const isFresh  = hasData && (Date.now() - snapshot.lastUpdated) < STALE_THRESHOLD_MS;
 
-    if (isFresh) {
-      // Fast path — paint directly from the snapshot the app already wrote
+    if (isFresh || hasData) {
       renderWidget(<WeatherWidgetView {...snapshotToViewProps(snapshot)} />);
       return;
     }
 
-    if (hasData) {
-      // Stale snapshot — still show last-known data rather than a blank widget.
-      // The widget will update properly next time the app fetches fresh data.
-      renderWidget(<WeatherWidgetView {...snapshotToViewProps(snapshot)} />);
-      return;
-    }
-
-    // No snapshot at all — the app hasn't run yet. Show an "open app" prompt
-    // using whatever preferences are available from AsyncStorage.
     const prefs = await loadPrefs();
+    const {time, dayDate} = buildCurrentTime();
     renderWidget(
       <WeatherWidgetView
-        city="Open app to load"
+        time={time}
+        dayDate={dayDate}
         temp="--"
         unit={prefs.tempUnit}
-        condition=""
-        aqi={null}
-        topPollen={null}
-        theme={prefs.widgetTheme}
-        display={prefs.widgetDisplay}
+        condition="Open app to load"
+        weatherIcon="⛅"
+        hiLo=""
+        hourly={[]}
       />,
     );
   } catch {
+    const {time, dayDate} = buildCurrentTime();
     renderWidget(
       <WeatherWidgetView
-        city="Weather"
+        time={time}
+        dayDate={dayDate}
         temp="--"
         unit="C"
-        condition="—"
-        aqi={null}
-        topPollen={null}
-        theme="dark"
-        display="temp_condition"
+        condition="Weather"
+        weatherIcon="⛅"
+        hiLo=""
+        hourly={[]}
       />,
     );
   }

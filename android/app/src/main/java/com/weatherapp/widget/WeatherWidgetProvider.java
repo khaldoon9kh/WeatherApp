@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.view.View;
 import android.widget.RemoteViews;
 
 import com.reactnativeandroidwidget.RNAndroidWidgetProvider;
@@ -14,18 +13,14 @@ import com.weatherapp.MainActivity;
 import com.weatherapp.R;
 import com.weatherapp.SharedPrefsModule;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+
 /**
- * Android AppWidgetProvider for the home screen weather widget.
- *
- * onUpdate() strategy:
- *   1. If SharedPreferences already contain a weather snapshot written by the app,
- *      immediately paint a native RemoteViews so the widget is never blank while
- *      the JS HeadlessTask is booting (fast path, synchronous, ~0 ms).
- *   2. Call super.onUpdate() so react-native-android-widget starts its HeadlessTask,
- *      which calls widgetTaskHandler() in WeatherWidget.js.  That handler reads the
- *      same SharedPreferences — it NEVER makes network calls independently.
- *   3. The JS-rendered widget then replaces the native one with the full-fidelity
- *      glassmorphism layout once the RN engine is ready.
+ * Premium 4×2 weather widget: gradient background, split clock/weather header,
+ * glassmorphism hourly forecast strip. Native RemoteViews are painted synchronously
+ * from SharedPreferences before the JS HeadlessTask finishes booting.
  */
 public class WeatherWidgetProvider extends RNAndroidWidgetProvider {
 
@@ -41,7 +36,6 @@ public class WeatherWidgetProvider extends RNAndroidWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences(
                 SharedPrefsModule.PREFS_NAME, Context.MODE_PRIVATE);
 
-        // Only paint natively if the app has written at least one snapshot
         if (prefs.contains("city_name")) {
             RemoteViews views = buildNativeRemoteViews(context, prefs);
             for (int id : appWidgetIds) {
@@ -49,89 +43,72 @@ public class WeatherWidgetProvider extends RNAndroidWidgetProvider {
             }
         }
 
-        // Start the JS HeadlessTask for the full RN render (reads same SharedPrefs)
         super.onUpdate(context, appWidgetManager, appWidgetIds);
     }
 
     // -------------------------------------------------------------------------
-    // Native RemoteViews builder — reads SharedPreferences, never the network
+    // Native RemoteViews builder
     // -------------------------------------------------------------------------
 
     public static RemoteViews buildNativeRemoteViews(Context context, SharedPreferences prefs) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.weather_widget_layout);
 
-        // --- Read all fields from SharedPreferences ---
-        String city        = prefs.getString("city_name",      "Weather");
-        float  tempC       = prefs.getFloat("temperature",     0f);
-        String label       = prefs.getString("weather_label",  "");
-        float  aqi         = prefs.getFloat("aqi",             0f);
-        float  grass       = prefs.getFloat("grass_pollen",    0f);
-        float  tree        = prefs.getFloat("tree_pollen",     0f);
-        float  weed        = prefs.getFloat("weed_pollen",     0f);
-        String unit        = prefs.getString("temp_unit",      "C");
-        String display     = prefs.getString("widget_display", "temp_condition_aqi");
-        String theme       = prefs.getString("widget_theme",   "dark");
+        // --- System clock ---
+        Calendar cal = Calendar.getInstance();
+        int sysHour = cal.get(Calendar.HOUR_OF_DAY);
+        int sysMin  = cal.get(Calendar.MINUTE);
+        String timeStr  = String.format(Locale.US, "%02d:%02d", sysHour, sysMin);
+        String dayDate  = new SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(cal.getTime());
 
-        // --- Temperature conversion ---
-        int temp = "F".equals(unit)
-                ? Math.round(tempC * 9f / 5f + 32)
-                : Math.round(tempC);
+        // --- SharedPreferences ---
+        float  tempC     = prefs.getFloat("temperature",  0f);
+        String label     = prefs.getString("weather_label", "");
+        int    code      = prefs.getInt("weather_code",   0);
+        float  dailyHi   = prefs.getFloat("daily_high",   0f);
+        float  dailyLo   = prefs.getFloat("daily_low",    0f);
+        String unit      = prefs.getString("temp_unit",   "C");
 
-        // --- Theme-dependent styling ---
-        int bgRes;
-        int textColor;
-        int subColor;
-        switch (theme) {
-            case "light":
-                bgRes     = R.drawable.widget_bg_light;
-                textColor = Color.parseColor("#0F172A");
-                subColor  = Color.parseColor("#64748B");
-                break;
-            case "transparent":
-                bgRes     = R.drawable.widget_bg_transparent;
-                textColor = Color.WHITE;
-                subColor  = Color.parseColor("#CBD5E1");
-                break;
-            default: // dark
-                bgRes     = R.drawable.widget_bg_dark;
-                textColor = Color.WHITE;
-                subColor  = Color.parseColor("#94A3B8");
-                break;
-        }
-        views.setInt(R.id.widget_root, "setBackgroundResource", bgRes);
+        // --- Temp conversion ---
+        int temp = toUnit(tempC, unit);
+        int hi   = toUnit(dailyHi, unit);
+        int lo   = toUnit(dailyLo, unit);
 
-        // --- City ---
-        views.setTextViewText(R.id.tv_city, city);
-        views.setTextColor(R.id.tv_city, subColor);
+        // --- Background: always the sunset gradient ---
+        views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_bg_gradient);
 
-        // --- Temperature ---
-        views.setTextViewText(R.id.tv_temperature, temp + "°" + unit);
-        views.setTextColor(R.id.tv_temperature, textColor);
+        // --- Top left: time + day/date ---
+        views.setTextViewText(R.id.tv_time,     timeStr);
+        views.setTextViewText(R.id.tv_day_date, dayDate);
 
-        // --- Condition ---
-        boolean showCondition = "temp_condition".equals(display) || "temp_condition_aqi".equals(display);
-        views.setTextViewText(R.id.tv_condition, showCondition ? label : "");
-        views.setTextColor(R.id.tv_condition, subColor);
+        // --- Top right: icon + temp + condition + H/L ---
+        views.setTextViewText(R.id.tv_weather_icon, weatherEmoji(code, isDaytime(sysHour)));
+        views.setTextViewText(R.id.tv_temperature,  temp + "°" + unit);
+        views.setTextViewText(R.id.tv_condition,    label);
+        views.setTextViewText(R.id.tv_hi_lo,        "H: " + hi + "°  L: " + lo + "°");
 
-        // --- AQI pill ---
-        boolean showAqi = "temp_condition_aqi".equals(display) && aqi > 0;
-        if (showAqi) {
-            int aqiColor = aqiColor((int) aqi);
-            String aqiText = "AQI " + Math.round(aqi) + "  " + aqiLabel((int) aqi);
-            views.setViewVisibility(R.id.ll_aqi, View.VISIBLE);
-            views.setTextViewText(R.id.tv_aqi, aqiText);
-            views.setTextColor(R.id.tv_aqi, aqiColor);
-        } else {
-            views.setViewVisibility(R.id.ll_aqi, View.GONE);
-        }
+        // --- Hourly strip ---
+        int[] labelIds = {
+            R.id.tv_hour0_label, R.id.tv_hour1_label, R.id.tv_hour2_label,
+            R.id.tv_hour3_label, R.id.tv_hour4_label, R.id.tv_hour5_label,
+        };
+        int[] iconIds = {
+            R.id.tv_hour0_icon, R.id.tv_hour1_icon, R.id.tv_hour2_icon,
+            R.id.tv_hour3_icon, R.id.tv_hour4_icon, R.id.tv_hour5_icon,
+        };
+        int[] tempIds = {
+            R.id.tv_hour0_temp, R.id.tv_hour1_temp, R.id.tv_hour2_temp,
+            R.id.tv_hour3_temp, R.id.tv_hour4_temp, R.id.tv_hour5_temp,
+        };
 
-        // --- Pollen summary ---
-        if ("temp_condition_aqi".equals(display)) {
-            String pollenText = topPollenSummary(grass, tree, weed);
-            views.setTextViewText(R.id.tv_pollen, pollenText);
-            views.setTextColor(R.id.tv_pollen, subColor);
-        } else {
-            views.setTextViewText(R.id.tv_pollen, "");
+        for (int i = 0; i < 6; i++) {
+            String hLabel = prefs.getString("hour" + i + "_label", "--");
+            String hIcon  = prefs.getString("hour" + i + "_icon",  "⛅");
+            float  hTempC = prefs.getFloat("hour"  + i + "_temp",  0f);
+            int    hTemp  = toUnit(hTempC, unit);
+
+            views.setTextViewText(labelIds[i], hLabel);
+            views.setTextViewText(iconIds[i],  hIcon);
+            views.setTextViewText(tempIds[i],  hTemp + "°");
         }
 
         // --- Tap → open app ---
@@ -146,35 +123,31 @@ public class WeatherWidgetProvider extends RNAndroidWidgetProvider {
     }
 
     // -------------------------------------------------------------------------
-    // Pure-Java helpers (mirror the JS airQualityService logic)
+    // Helpers
     // -------------------------------------------------------------------------
 
-    private static String aqiLabel(int aqi) {
-        if (aqi <= 20)  return "Good";
-        if (aqi <= 40)  return "Fair";
-        if (aqi <= 60)  return "Moderate";
-        if (aqi <= 80)  return "Poor";
-        if (aqi <= 100) return "Very Poor";
-        return "Hazardous";
+    private static int toUnit(float celsius, String unit) {
+        return "F".equals(unit)
+                ? Math.round(celsius * 9f / 5f + 32)
+                : Math.round(celsius);
     }
 
-    private static int aqiColor(int aqi) {
-        if (aqi <= 20)  return Color.parseColor("#22C55E");
-        if (aqi <= 40)  return Color.parseColor("#84CC16");
-        if (aqi <= 60)  return Color.parseColor("#EAB308");
-        if (aqi <= 80)  return Color.parseColor("#F97316");
-        if (aqi <= 100) return Color.parseColor("#EF4444");
-        return Color.parseColor("#A855F7");
+    private static boolean isDaytime(int hour) {
+        return hour >= 6 && hour < 20;
     }
 
-    private static String topPollenSummary(float grass, float tree, float weed) {
-        float max = Math.max(grass, Math.max(tree, weed));
-        if (max < 10) return "";
-        String type = (max == grass) ? "Grass" : (max == tree ? "Tree" : "Weed");
-        String level;
-        if      (max > 200) level = "Very High";
-        else if (max > 50)  level = "High";
-        else                level = "Medium";
-        return type + " pollen: " + level;
+    /** Returns a weather emoji for the given WMO code. isDaytime switches sun ↔ moon. */
+    private static String weatherEmoji(int code, boolean isDaytime) {
+        if (code == 0 || code == 1)              return isDaytime ? "☀️" : "🌙";
+        if (code == 2)                           return isDaytime ? "⛅" : "☁️";
+        if (code == 3)                           return "☁️";
+        if (code == 45 || code == 48)            return "🌫️";
+        if (code >= 51 && code <= 55)            return "🌦️";
+        if (code >= 61 && code <= 65)            return "🌧️";
+        if (code >= 71 && code <= 77)            return "❄️";
+        if (code >= 80 && code <= 82)            return "🌩️";
+        if (code >= 85 && code <= 86)            return "🌨️";
+        if (code >= 95)                          return "⛈️";
+        return isDaytime ? "⛅" : "🌙";
     }
 }

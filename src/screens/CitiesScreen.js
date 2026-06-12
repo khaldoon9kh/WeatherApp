@@ -16,7 +16,7 @@ import CitySearchModal from '../components/CitySearchModal';
 import {loadCities, addCity, removeCity} from '../storage/citiesStorage';
 import {loadPrefs} from '../storage/prefsStorage';
 import {getLocationWithPermission} from '../services/locationService';
-import {getWeatherInfo} from '../services/weatherService';
+import {getWeatherInfo, weatherEmoji} from '../services/weatherService';
 import {writeWeatherData} from '../services/sharedPrefsService';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -108,6 +108,13 @@ export default function CitiesScreen() {
     if (!city || !weather || !aq || !p) {
       return;
     }
+    const hourlyPayload = {};
+    (weather.hourly || []).slice(0, 6).forEach((h, i) => {
+      const isDaytime = h.hour >= 6 && h.hour < 20;
+      hourlyPayload[`hour${i}Label`] = h.label;
+      hourlyPayload[`hour${i}Icon`]  = weatherEmoji(h.weatherCode, isDaytime);
+      hourlyPayload[`hour${i}Temp`]  = h.temp;
+    });
     writeWeatherData({
       cityName:      city.name,
       latitude:      city.latitude,
@@ -120,6 +127,8 @@ export default function CitiesScreen() {
       visibility:    weather.current.visibility,
       weatherCode:   weather.current.weatherCode,
       weatherLabel:  getWeatherInfo(weather.current.weatherCode).label,
+      dailyHigh:     weather.daily[0]?.tempMax ?? 0,
+      dailyLow:      weather.daily[0]?.tempMin ?? 0,
       aqi:           aq.aqi,
       pm25:          aq.pm25,
       pm10:          aq.pm10,
@@ -129,6 +138,7 @@ export default function CitiesScreen() {
       tempUnit:      p.tempUnit,
       widgetDisplay: p.widgetDisplay,
       widgetTheme:   p.widgetTheme,
+      ...hourlyPayload,
     }).catch(() => {});
   }, []);
 

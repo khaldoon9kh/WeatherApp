@@ -15,7 +15,7 @@ import ForecastStrip from '../components/ForecastStrip';
 import WeatherCard from '../components/WeatherCard';
 import AQIBadge from '../components/AQIBadge';
 import PollenCard from '../components/PollenCard';
-import {fetchWeather, getWeatherInfo, convertTemp} from '../services/weatherService';
+import {fetchWeather, getWeatherInfo, convertTemp, weatherEmoji} from '../services/weatherService';
 import {fetchAirQuality, buildAllergySummary, getPollenInfo} from '../services/airQualityService';
 import {getLocationWithPermission} from '../services/locationService';
 import {loadPrefs} from '../storage/prefsStorage';
@@ -66,6 +66,13 @@ export default function HomeScreen() {
 
       // Persist a snapshot to SharedPreferences so the home screen widget can
       // render immediately from cached data (also triggers widget update broadcast).
+      const hourlyPayload = {};
+      (w.hourly || []).slice(0, 6).forEach((h, i) => {
+        const isDaytime = h.hour >= 6 && h.hour < 20;
+        hourlyPayload[`hour${i}Label`] = h.label;
+        hourlyPayload[`hour${i}Icon`]  = weatherEmoji(h.weatherCode, isDaytime);
+        hourlyPayload[`hour${i}Temp`]  = h.temp;
+      });
       writeWeatherData({
         cityName:     city.name,
         latitude:     city.latitude,
@@ -78,6 +85,8 @@ export default function HomeScreen() {
         visibility:   w.current.visibility,
         weatherCode:  w.current.weatherCode,
         weatherLabel: getWeatherInfo(w.current.weatherCode).label,
+        dailyHigh:    w.daily[0]?.tempMax ?? 0,
+        dailyLow:     w.daily[0]?.tempMin ?? 0,
         aqi:          aq.aqi,
         pm25:         aq.pm25,
         pm10:         aq.pm10,
@@ -87,6 +96,7 @@ export default function HomeScreen() {
         tempUnit:     userPrefs.tempUnit,
         widgetDisplay: userPrefs.widgetDisplay,
         widgetTheme:  userPrefs.widgetTheme,
+        ...hourlyPayload,
       }).catch(() => {}); // fire-and-forget, never block the UI
 
     } catch (e) {

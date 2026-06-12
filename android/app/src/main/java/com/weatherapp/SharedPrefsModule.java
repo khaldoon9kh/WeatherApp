@@ -14,6 +14,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
 import com.weatherapp.widget.WeatherWidgetProvider;
@@ -35,7 +36,7 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
     }
 
     /**
-     * Write all weather + AQI + pollen + settings fields to SharedPreferences.
+     * Write all weather + AQI + pollen + hourly + settings fields to SharedPreferences.
      * Automatically triggers a widget update broadcast so the home screen widget
      * reflects the new data without any additional JS calls.
      */
@@ -61,6 +62,10 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
             if (data.hasKey("weatherCode"))   ed.putInt("weather_code",      data.getInt("weatherCode"));
             if (data.hasKey("weatherLabel"))  ed.putString("weather_label",  data.getString("weatherLabel"));
 
+            // Daily high/low for H: / L: display
+            if (data.hasKey("dailyHigh"))     ed.putFloat("daily_high",      (float) data.getDouble("dailyHigh"));
+            if (data.hasKey("dailyLow"))      ed.putFloat("daily_low",       (float) data.getDouble("dailyLow"));
+
             // Air quality
             if (data.hasKey("aqi"))           ed.putFloat("aqi",             (float) data.getDouble("aqi"));
             if (data.hasKey("pm25"))          ed.putFloat("pm25",            (float) data.getDouble("pm25"));
@@ -71,7 +76,17 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
             if (data.hasKey("treePollen"))    ed.putFloat("tree_pollen",     (float) data.getDouble("treePollen"));
             if (data.hasKey("weedPollen"))    ed.putFloat("weed_pollen",     (float) data.getDouble("weedPollen"));
 
-            // Widget display preferences (co-written here so the widget sees a consistent snapshot)
+            // Hourly forecast — 6 slots, each with label, pre-computed emoji icon, temp
+            for (int i = 0; i < 6; i++) {
+                String lk = "hour" + i + "Label";
+                String ik = "hour" + i + "Icon";
+                String tk = "hour" + i + "Temp";
+                if (data.hasKey(lk)) ed.putString("hour" + i + "_label", data.getString(lk));
+                if (data.hasKey(ik)) ed.putString("hour" + i + "_icon",  data.getString(ik));
+                if (data.hasKey(tk)) ed.putFloat("hour"  + i + "_temp",  (float) data.getDouble(tk));
+            }
+
+            // Widget display preferences
             if (data.hasKey("tempUnit"))      ed.putString("temp_unit",      data.getString("tempUnit"));
             if (data.hasKey("widgetDisplay")) ed.putString("widget_display", data.getString("widgetDisplay"));
             if (data.hasKey("widgetTheme"))   ed.putString("widget_theme",   data.getString("widgetTheme"));
@@ -108,6 +123,8 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
             out.putDouble("visibility",    prefs.getFloat("visibility",      0f));
             out.putInt("weatherCode",      prefs.getInt("weather_code",      0));
             out.putString("weatherLabel",  prefs.getString("weather_label",  ""));
+            out.putDouble("dailyHigh",     prefs.getFloat("daily_high",      0f));
+            out.putDouble("dailyLow",      prefs.getFloat("daily_low",       0f));
             out.putDouble("aqi",           prefs.getFloat("aqi",             0f));
             out.putDouble("pm25",          prefs.getFloat("pm25",            0f));
             out.putDouble("pm10",          prefs.getFloat("pm10",            0f));
@@ -118,6 +135,17 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
             out.putString("widgetDisplay", prefs.getString("widget_display", "temp_condition_aqi"));
             out.putString("widgetTheme",   prefs.getString("widget_theme",   "dark"));
             out.putDouble("lastUpdated",   (double) prefs.getLong("last_updated", 0L));
+
+            // Hourly array
+            WritableArray hourlyArr = Arguments.createArray();
+            for (int i = 0; i < 6; i++) {
+                WritableMap h = Arguments.createMap();
+                h.putString("label", prefs.getString("hour" + i + "_label", "--"));
+                h.putString("icon",  prefs.getString("hour" + i + "_icon",  "⛅"));
+                h.putDouble("temp",  prefs.getFloat("hour"  + i + "_temp",  0f));
+                hourlyArr.pushMap(h);
+            }
+            out.putArray("hourly", hourlyArr);
 
             promise.resolve(out);
         } catch (Exception e) {
@@ -160,7 +188,7 @@ public class SharedPrefsModule extends ReactContextBaseJavaModule {
         ComponentName provider = new ComponentName(ctx, WeatherWidgetProvider.class);
         int[] ids = mgr.getAppWidgetIds(provider);
         if (ids.length == 0) {
-            return; // No widgets placed — nothing to do
+            return;
         }
         Intent intent = new Intent(ctx, WeatherWidgetProvider.class);
         intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
